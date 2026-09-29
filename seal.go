@@ -1,8 +1,6 @@
 package main
 
 import (
-	"crypto/aes"
-	"crypto/cipher"
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
@@ -51,27 +49,18 @@ func (b *broker) seal(purpose string, value any) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	block, err := aes.NewCipher(b.stateKey)
-	if err != nil {
-		return "", err
-	}
-	aead, err := cipher.NewGCM(block)
-	if err != nil {
-		return "", err
-	}
-
-	nonce := make([]byte, aead.NonceSize())
+	nonce := make([]byte, b.stateAEAD.NonceSize())
 	if _, err := rand.Read(nonce); err != nil {
 		return "", err
 	}
-	sealed := append(nonce, aead.Seal(nil, nonce, plain, []byte(purpose))...)
+	sealed := append(nonce, b.stateAEAD.Seal(nil, nonce, plain, []byte(purpose))...)
 	return base64.RawURLEncoding.EncodeToString(sealed), nil
 }
 
 func (b *broker) openState(raw string) (sealedState, error) {
 	var state sealedState
 	err := b.open(raw, statePurpose, &state)
-	if err != nil || state.ExpiresAt < time.Now().Unix() {
+	if err != nil || state.ExpiresAt <= time.Now().Unix() {
 		return sealedState{}, errors.New("invalid state")
 	}
 	return state, nil
@@ -80,7 +69,7 @@ func (b *broker) openState(raw string) (sealedState, error) {
 func (b *broker) openCode(raw string) (sealedCode, error) {
 	var code sealedCode
 	err := b.open(raw, codePurpose, &code)
-	if err != nil || code.ExpiresAt < time.Now().Unix() {
+	if err != nil || code.ExpiresAt <= time.Now().Unix() {
 		return sealedCode{}, errors.New("invalid code")
 	}
 	return code, nil
@@ -91,15 +80,10 @@ func (b *broker) open(raw, purpose string, value any) error {
 	if err != nil {
 		return err
 	}
-	block, err := aes.NewCipher(b.stateKey)
-	if err != nil {
-		return err
-	}
-	aead, err := cipher.NewGCM(block)
-	if err != nil || len(sealed) < aead.NonceSize() {
+	if len(sealed) < b.stateAEAD.NonceSize() {
 		return errors.New("invalid sealed value")
 	}
-	plain, err := aead.Open(nil, sealed[:aead.NonceSize()], sealed[aead.NonceSize():], []byte(purpose))
+	plain, err := b.stateAEAD.Open(nil, sealed[:b.stateAEAD.NonceSize()], sealed[b.stateAEAD.NonceSize():], []byte(purpose))
 	if err != nil {
 		return err
 	}

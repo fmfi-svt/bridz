@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"crypto/aes"
+	"crypto/cipher"
 	"crypto/rsa"
 	"encoding/base64"
 	"errors"
@@ -19,7 +21,7 @@ type broker struct {
 
 	cfg        config
 	clients    map[string]clientConfig
-	stateKey   []byte
+	stateAEAD  cipher.AEAD
 	signingKey *rsa.PrivateKey
 	upstream   rp.RelyingParty
 }
@@ -33,6 +35,15 @@ func newBroker(cfg config) (*broker, error) {
 		return nil, errors.New("keys.state_encryption_key must be a base64url-encoded 32-byte key")
 	}
 
+	block, err := aes.NewCipher(stateKey)
+	if err != nil {
+		return nil, fmt.Errorf("state encryption key: %w", err)
+	}
+	stateAEAD, err := cipher.NewGCM(block)
+	if err != nil {
+		return nil, fmt.Errorf("state encryption key: %w", err)
+	}
+
 	key, err := parseRSAKey([]byte(cfg.Keys.SigningKeyPEM))
 	if err != nil {
 		return nil, fmt.Errorf("signing key: %w", err)
@@ -43,7 +54,7 @@ func newBroker(cfg config) (*broker, error) {
 		return nil, err
 	}
 
-	b := &broker{cfg: cfg, clients: clients, stateKey: stateKey, signingKey: key}
+	b := &broker{cfg: cfg, clients: clients, stateAEAD: stateAEAD, signingKey: key}
 
 	upstream, err := rp.NewRelyingPartyOIDC(
 		context.Background(),
