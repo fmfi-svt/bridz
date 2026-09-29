@@ -68,8 +68,18 @@ func (b *broker) upstreamCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	claims := nonProtocolClaims(claimMap(tokens.IDTokenClaims))
-	maps.Copy(claims, nonProtocolClaims(claimMap(info)))
+	idClaims, err := claimMap(tokens.IDTokenClaims)
+	if err != nil {
+		http.Error(w, "could not process upstream claims", http.StatusBadGateway)
+		return
+	}
+	userinfoClaims, err := claimMap(info)
+	if err != nil {
+		http.Error(w, "could not process upstream claims", http.StatusBadGateway)
+		return
+	}
+	claims := nonProtocolClaims(idClaims)
+	maps.Copy(claims, nonProtocolClaims(userinfoClaims))
 
 	code, err := b.sealCode(sealedCode{
 		ExpiresAt:   time.Now().Add(authorizationCodeLifetime).Unix(),
@@ -139,16 +149,16 @@ func (b *broker) verifyAccessToken(raw string) (map[string]any, error) {
 	return claims, nil
 }
 
-func claimMap(value any) map[string]any {
+func claimMap(value any) (map[string]any, error) {
 	data, err := json.Marshal(value)
 	if err != nil {
-		return nil
+		return nil, err
 	}
 	var claims map[string]any
-	if json.Unmarshal(data, &claims) != nil {
-		return nil
+	if err := json.Unmarshal(data, &claims); err != nil {
+		return nil, err
 	}
-	return claims
+	return claims, nil
 }
 
 func nonProtocolClaims(input map[string]any) map[string]any {
