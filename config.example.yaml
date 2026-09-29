@@ -1,0 +1,24 @@
+issuer: https://bridz.example.com
+listen: 127.0.0.1:8080
+
+keys:
+  # A random 32-byte key encoded with base64.RawURLEncoding.
+  state_encryption_key: REPLACE_WITH_32_BYTE_BASE64URL_KEY
+  signing_key_pem: |
+    -----BEGIN PRIVATE KEY-----
+    REPLACE_WITH_RSA_PRIVATE_KEY
+    -----END PRIVATE KEY-----
+  signing_key_id: bridz-2026-01
+
+upstream:
+  issuer: https://idp.example.com
+  client_id: bridz
+  client_secret: REPLACE_ME
+  scopes: [openid, profile, email]
+  redirect_uri: https://bridz.example.com/upstream/callback
+
+clients:
+  - id: app-a
+    secret: REPLACE_ME
+    redirect_uris:
+      - https://app-a.example.com/oidc/callback
