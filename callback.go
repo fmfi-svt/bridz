@@ -55,7 +55,7 @@ func (b *broker) upstreamCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ctx := context.WithValue(r.Context(), nonceContextKey{}, state.Nonce)
+	ctx := context.WithValue(r.Context(), nonceContextKey{}, state.UpstreamNonce)
 	tokens, err := rp.CodeExchange[*oidc.IDTokenClaims](ctx, r.URL.Query().Get("code"), b.upstream)
 	if err != nil {
 		http.Error(w, "upstream token exchange failed", http.StatusBadGateway)

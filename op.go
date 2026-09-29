@@ -55,7 +55,7 @@ func (b *broker) Authorize(ctx context.Context, r *op.ClientRequest[oidc.AuthReq
 		return nil, oidc.ErrInvalidRequest()
 	}
 
-	nonce, err := randomString(32)
+	upstreamNonce, err := randomString(32)
 	if err != nil {
 		return nil, err
 	}
@@ -65,7 +65,8 @@ func (b *broker) Authorize(ctx context.Context, r *op.ClientRequest[oidc.AuthReq
 		ClientID:    r.Data.ClientID,
 		RedirectURI: r.Data.RedirectURI,
 		State:         r.Data.State,
-		Nonce:         nonce,
+		Nonce:         r.Data.Nonce,
+		UpstreamNonce: upstreamNonce,
 		CookieBinding: binding,
 	})
 	if err != nil {
@@ -73,7 +74,7 @@ func (b *broker) Authorize(ctx context.Context, r *op.ClientRequest[oidc.AuthReq
 	}
 
 	return op.NewRedirect(rp.AuthURL(state, b.upstream, rp.AuthURLOpt(func() []oauth2.AuthCodeOption {
-		return []oauth2.AuthCodeOption{oauth2.SetAuthURLParam("nonce", nonce)}
+		return []oauth2.AuthCodeOption{oauth2.SetAuthURLParam("nonce", upstreamNonce)}
 	}))), nil
 }
 

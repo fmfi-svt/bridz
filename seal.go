@@ -21,7 +21,8 @@ type sealedState struct {
 	ClientID    string `json:"client_id"`
 	RedirectURI string `json:"redirect_uri"`
 	State         string `json:"state,omitempty"`
-	Nonce         string `json:"nonce"`
+	Nonce         string `json:"nonce,omitempty"`
+	UpstreamNonce string `json:"upstream_nonce"`
 	CookieBinding string `json:"cookie_binding"`
 }
 
