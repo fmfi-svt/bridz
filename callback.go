@@ -91,6 +91,8 @@ func (b *broker) upstreamCallback(w http.ResponseWriter, r *http.Request) {
 		query.Set("state", state.State)
 	}
 	redirect.RawQuery = query.Encode()
+	w.Header().Set("Cache-Control", "no-store")
+	w.Header().Set("Pragma", "no-cache")
 	http.Redirect(w, r, redirect.String(), http.StatusFound)
 }
 
