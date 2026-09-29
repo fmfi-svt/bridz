@@ -20,8 +20,9 @@ type sealedState struct {
 	ExpiresAt   int64  `json:"exp"`
 	ClientID    string `json:"client_id"`
 	RedirectURI string `json:"redirect_uri"`
-	State       string `json:"state,omitempty"`
-	Nonce       string `json:"nonce"`
+	State         string `json:"state,omitempty"`
+	Nonce         string `json:"nonce"`
+	CookieBinding string `json:"cookie_binding"`
 }
 
 // sealedCode is the self-contained downstream authorization code.

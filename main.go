@@ -33,7 +33,9 @@ func main() {
 	}
 
 	mux := http.NewServeMux()
-	mux.Handle("/", op.RegisterServer(broker, endpoints))
+	opHandler := op.RegisterServer(broker, endpoints)
+	mux.Handle("/authorize", broker.bindStateCookie(opHandler))
+	mux.Handle("/", opHandler)
 	mux.HandleFunc("/upstream/callback", broker.upstreamCallback)
 
 	server := &http.Server{

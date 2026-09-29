@@ -12,6 +12,7 @@ import (
 )
 
 type nonceContextKey struct{}
+type stateCookieContextKey struct{}
 
 type broker struct {
 	op.UnimplementedServer

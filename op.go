@@ -49,7 +49,12 @@ func (b *broker) VerifyAuthRequest(_ context.Context, r *op.Request[oidc.AuthReq
 	return &op.ClientRequest[oidc.AuthRequest]{Request: r, Client: configuredClient{client}}, nil
 }
 
-func (b *broker) Authorize(_ context.Context, r *op.ClientRequest[oidc.AuthRequest]) (*op.Redirect, error) {
+func (b *broker) Authorize(ctx context.Context, r *op.ClientRequest[oidc.AuthRequest]) (*op.Redirect, error) {
+	binding, ok := ctx.Value(stateCookieContextKey{}).(string)
+	if !ok {
+		return nil, oidc.ErrInvalidRequest()
+	}
+
 	nonce, err := randomString(32)
 	if err != nil {
 		return nil, err
@@ -59,8 +64,9 @@ func (b *broker) Authorize(_ context.Context, r *op.ClientRequest[oidc.AuthReque
 		ExpiresAt:   time.Now().Add(authorizationCodeLifetime).Unix(),
 		ClientID:    r.Data.ClientID,
 		RedirectURI: r.Data.RedirectURI,
-		State:       r.Data.State,
-		Nonce:       nonce,
+		State:         r.Data.State,
+		Nonce:         nonce,
+		CookieBinding: binding,
 	})
 	if err != nil {
 		return nil, err

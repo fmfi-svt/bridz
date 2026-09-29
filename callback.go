@@ -16,6 +16,21 @@ import (
 	"github.com/zitadel/oidc/v3/pkg/oidc"
 )
 
+const stateCookieName = "__Host-bridz-state"
+
+func (b *broker) bindStateCookie(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		binding, err := randomString(32)
+		if err != nil {
+			http.Error(w, "could not start authorization", http.StatusInternalServerError)
+			return
+		}
+
+		http.SetCookie(w, &http.Cookie{Name: stateCookieName, Value: binding, Path: "/", Secure: true, HttpOnly: true, SameSite: http.SameSiteLaxMode})
+		next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), stateCookieContextKey{}, binding)))
+	})
+}
+
 func (b *broker) upstreamCallback(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Query().Get("error") != "" {
 		http.Error(w, "upstream authorization failed", http.StatusBadRequest)
@@ -27,6 +42,14 @@ func (b *broker) upstreamCallback(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid state", http.StatusBadRequest)
 		return
 	}
+
+	cookie, err := r.Cookie(stateCookieName)
+	if err != nil || cookie.Value != state.CookieBinding {
+		http.Error(w, "invalid state", http.StatusBadRequest)
+		return
+	}
+	http.SetCookie(w, &http.Cookie{Name: cookie.Name, Value: "", Path: "/", MaxAge: -1, Secure: true, HttpOnly: true, SameSite: http.SameSiteLaxMode})
+
 	if r.URL.Query().Get("code") == "" {
 		http.Error(w, "missing upstream code", http.StatusBadRequest)
 		return
