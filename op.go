@@ -5,6 +5,7 @@ import (
 	"crypto/subtle"
 	"encoding/base64"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/zitadel/oidc/v3/pkg/client/rp"
@@ -24,7 +25,7 @@ func (b *broker) Discovery(_ context.Context, _ *op.Request[struct{}]) (*op.Resp
 		"grant_types_supported":                 []string{"authorization_code"},
 		"subject_types_supported":               []string{"public"},
 		"id_token_signing_alg_values_supported": []string{"RS256"},
-		"token_endpoint_auth_methods_supported": []string{"client_secret_basic", "client_secret_post"},
+		"token_endpoint_auth_methods_supported": []string{"client_secret_basic"},
 	}), nil
 }
 
@@ -80,6 +81,10 @@ func (b *broker) Authorize(ctx context.Context, r *op.ClientRequest[oidc.AuthReq
 
 // VerifyClient accepts only configured confidential clients.
 func (b *broker) VerifyClient(_ context.Context, r *op.Request[op.ClientCredentials]) (op.Client, error) {
+	if !strings.HasPrefix(strings.ToLower(r.Header.Get("Authorization")), "basic ") {
+		return nil, oidc.ErrInvalidClient()
+	}
+
 	client, ok := b.clients[r.Data.ClientID]
 	if !ok || subtle.ConstantTimeCompare([]byte(client.Secret), []byte(r.Data.ClientSecret)) != 1 {
 		return nil, oidc.ErrInvalidClient()
